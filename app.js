@@ -1,13 +1,8 @@
-const express = require('express');
-const app = express();
-const port = 3005;
-
-app.use(express.json());
-
-app.get('/', (req, res) => {
-  res.json({ message: 'Hello World!' });
+const http = require('http');
+const port = process.env.PORT || 3005;
+const server = http.createServer((req, res) => {
+  res.end('Hello from Jenkins CI/CD on Kubernetes!\n');
 });
-
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
