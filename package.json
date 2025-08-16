@@ -1,0 +1,23 @@
+{
+  "name": "test2",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wolfix1234/test2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wolfix1234/test2/issues"
+  },
+  "homepage": "https://github.com/wolfix1234/test2#readme",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
