@@ -1,48 +1,34 @@
 pipeline {
     agent any
-
     environment {
-        REGISTRY = "docker.io/wolfix1245"
-        APP_NAME = "jen"
-        KUBE_NAMESPACE = "mamad"
+        DOCKER_IMAGE = 'wolfix1245/jen:latest'
+        KUBE_DEPLOYMENT = 'jeny.yaml'
     }
-
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/wolfix1234/test2.git'
+                git url: 'https://github.com/wolfix1234/test2.git', branch: 'main'
             }
         }
-
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
                 script {
-                    dockerImage = docker.build("${REGISTRY}/${APP_NAME}:${latest}")
+                    docker.build(DOCKER_IMAGE)
                 }
             }
         }
-
-        stage('Push to Registry') {
+        stage('Push Image') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
-                        dockerImage.push()
-                        dockerImage.push("latest")
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-creds') {
+                        docker.image(DOCKER_IMAGE).push()
                     }
                 }
             }
         }
-
-        stage('Deploy to Kubernetes') {
+        stage('Deploy to K8s') {
             steps {
-                script {
-                    sh """
-                    kubectl set image deployment/${APP_NAME} ${APP_NAME}=${REGISTRY}/${APP_NAME}:${BUILD_NUMBER} -n ${KUBE_NAMESPACE} --record || \
-                    kubectl create deployment ${APP_NAME} --image=${REGISTRY}/${APP_NAME}:${BUILD_NUMBER} -n ${KUBE_NAMESPACE}
-                    
-                    kubectl expose deployment ${APP_NAME} --type=NodePort --port=3000 -n ${KUBE_NAMESPACE} || true
-                    """
-                }
+                sh "kubectl apply -f ${KUBE_DEPLOYMENT}"
             }
         }
     }
