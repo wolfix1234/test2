@@ -2,8 +2,8 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = 'wolfix1245/jenkins-app'
-        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE = 'wolfix1245/jen'
+        DOCKER_TAG = "latest"
         KUBE_NAMESPACE = 'mamad'
     }
 
