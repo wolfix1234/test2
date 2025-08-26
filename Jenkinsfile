@@ -1,90 +1,46 @@
 pipeline {
-    agent any
-    
-    environment {
-        DOCKER_IMAGE = 'wolfix1245/jen'
-        DOCKER_TAG = "latest"
-        KUBE_NAMESPACE = 'mamad'
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - sleep
+    args:
+    - 99d
+    volumeMounts:
+    - name: docker-config
+      mountPath: /kaniko/.docker
+  volumes:
+  - name: docker-config
+    secret:
+      secretName: docker-config
+'''
+        }
     }
-
     stages {
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                script {
-                    // Wrap in node block to get executor
-                    node {
-                        git(
-                            url: 'https://github.com/wolfix1234/test2.git',
-                            branch: 'main'
-                        )
-                    }
+                git url: 'https://github.com/wolfix1234/test2.git', branch: 'main'
+            }
+        }
+        stage('Build and Push with Kaniko') {
+            steps {
+                container('kaniko') {
+                    sh '''
+                    /kaniko/executor --dockerfile=Dockerfile --context=. --destination=wolfix1245/jen:latest
+                    '''
                 }
             }
         }
-
-        stage('Build & Push with Kaniko') {
+        stage('Deploy to Cluster') {
             steps {
-                script {
-                    // Use podTemplate with node wrapper
-                    podTemplate(
-                        containers: [
-                            containerTemplate(
-                                name: 'kaniko', 
-                                image: 'gcr.io/kaniko-project/executor:latest',
-                                command: 'sleep',
-                                args: '999999',
-                                ttyEnabled: true
-                            )
-                        ],
-                        volumes: [
-                            secretVolume(
-                                secretName: 'docker-credentials',
-                                mountPath: '/kaniko/.docker'
-                            )
-                        ]
-                    ) {
-                        node(POD_LABEL) {
-                            container('kaniko') {
-                                sh """
-                                /kaniko/executor \
-                                    --context=\$(pwd) \
-                                    --dockerfile=Dockerfile \
-                                    --destination=${env.DOCKER_IMAGE}:${env.DOCKER_TAG} \
-                                    --cache=true \
-                                    --verbosity=info
-                                """
-                            }
-                        }
-                    }
-                }
+                sh 'kubectl apply -f deployment.yaml -n mamad'
             }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    node {
-                        sh """
-                        kubectl apply -f deployment.yaml -n ${env.KUBE_NAMESPACE}
-                        """
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            script {
-                // Simple echo without container for post actions
-                echo "Build completed with status: ${currentBuild.currentResult}"
-            }
-        }
-        success {
-            echo "✅ Pipeline succeeded! Image: ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"
-        }
-        failure {
-            echo "❌ Pipeline failed!"
         }
     }
 }
