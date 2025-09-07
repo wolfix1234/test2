@@ -21,3 +21,5 @@ deploy_job:
   stage: deploy
   script:
     - echo "Deploying project..."
+  tags:
+    - mamad
