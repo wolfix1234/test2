@@ -21,12 +21,27 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Push to GitLab
+      - name: Push to GitLab (Branches and Tags)
         run: |
-          git remote add gitlab https://$USERNAME:$TOKEN@$GITLAB_SERVER/${GITLAB_REPOSITORY}.git
-          git push --mirror gitlab
+          # Add GitLab remote with authentication
+          git remote add gitlab https://$USERNAME:$TOKEN@$GITLAB_SERVER/$GITLAB_REPOSITORY.git
+          
+          # Fetch from GitLab to ensure we have latest state (optional but recommended)
+          git fetch gitlab || echo "Initial fetch may fail if repo is empty, continuing..."
+          
+          # Push the main branch forcefully (overwrites remote with local state)
+          echo "Pushing main branch to GitLab..."
+          git push gitlab HEAD:main --force
+          
+          # Push all tags
+          echo "Pushing tags to GitLab..."
+          git push --tags gitlab --force
+          
+          # Optional: Push other branches if needed
+          # echo "Pushing other branches to GitLab..."
+          # git push gitlab --all --force
         env:
-          USERNAME: ${{ secrets.GITLAB_DEPLOY_USERNAME }} # The deploy token username
-          TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}       # The deploy token value
-          GITLAB_SERVER: musictomak.shop # Use your self-hosted URL if different, e.g., gitlab.my-company.com
-          GITLAB_REPOSITORY: root/test2 # Your GitLab project path
+          USERNAME: ${{ secrets.GITLAB_DEPLOY_USERNAME }}
+          TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}
+          GITLAB_SERVER: musictomak.shop
+          GITLAB_REPOSITORY: root/test2
