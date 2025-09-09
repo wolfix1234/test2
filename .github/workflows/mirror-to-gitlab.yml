@@ -1,0 +1,32 @@
+name: 🪞 Mirror to GitLab
+
+# Trigger this action on every push to the "main" branch
+# You can change this to any branch you want to mirror
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  mirror:
+    name: Push to GitLab
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history, not just the latest commit
+
+      - name: Configure Git for mirroring
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Push to GitLab
+        run: |
+          git remote add gitlab https://$USERNAME:$TOKEN@$GITLAB_SERVER/${GITLAB_REPOSITORY}.git
+          git push --mirror gitlab
+        env:
+          USERNAME: ${{ secrets.GITLAB_DEPLOY_USERNAME }} # The deploy token username
+          TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}       # The deploy token value
+          GITLAB_SERVER: gitlab.com # Use your self-hosted URL if different, e.g., gitlab.my-company.com
+          GITLAB_REPOSITORY: root/test2 # Your GitLab project path
