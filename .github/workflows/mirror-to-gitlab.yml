@@ -28,5 +28,5 @@ jobs:
         env:
           USERNAME: ${{ secrets.GITLAB_DEPLOY_USERNAME }} # The deploy token username
           TOKEN: ${{ secrets.GITLAB_DEPLOY_TOKEN }}       # The deploy token value
-          GITLAB_SERVER: gitlab.com # Use your self-hosted URL if different, e.g., gitlab.my-company.com
+          GITLAB_SERVER: musictomak.shop # Use your self-hosted URL if different, e.g., gitlab.my-company.com
           GITLAB_REPOSITORY: root/test2 # Your GitLab project path
