@@ -1,109 +1,109 @@
-stages:
+dont use any input on this `stages:
   - build
-  - build-docker
+  - test
+  - docker
   - deploy
 
 variables:
-  # Docker configuration
+  # Application configuration
+  APP_NAME: nextjs-app
   DOCKER_IMAGE: musictomak.shop/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   
-  # Registry credentials (set your actual values here)
-  CI_REGISTRY: musictomak.shop
-  CI_REGISTRY_USER: root
-  CI_REGISTRY_PASSWORD: glpat-OS-I0Gzqvex48Q2DpMMpTG86MQp1OjEH.01.0w0ajei0l  # ← Replace with your PAT
-  
   # Kubernetes configuration
   K8S_NAMESPACE: mamad
-  K8S_DEPLOYMENT: nextjs-app
-  K8S_CONTAINER: nextjs-app
-  
-  # Docker-in-Docker configuration - FIXED TLS SETTINGS
-  DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: ""  # ← EMPTY STRING DISABLES TLS
-  DOCKER_TLS_VERIFY: "0"
+  K8S_DEPLOYMENT: $APP_NAME
+  K8S_CONTAINER: $APP_NAME
 
+# Cache dependencies for faster builds
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - node_modules/
     - .next/cache/
+  policy: pull-push
 
-build:nextjs:
+# Build Next.js application
+build:
   stage: build
   image: node:18-alpine
   script:
-    - npm ci
+    - echo "Installing dependencies..."
+    - npm ci --prefer-offline --audit=false
+    - echo "Building application..."
     - npm run build
+    - echo "Build completed successfully!"
   artifacts:
     paths:
       - .next/
       - public/
-    expire_in: 1 week
+      - package.json
+      - package-lock.json
+    expire_in: 1 hour
+  only:
+    - main
 
-build:docker:
-  stage: build-docker
+# Run tests (optional - uncomment when ready)
+# test:
+#   stage: test
+#   image: node:18-alpine
+#   script:
+#     - npm ci --prefer-offline --audit=false
+#     - npm run test
+#   needs: ["build"]
+#   only:
+#     - main
+
+# Build and push Docker image
+docker:
+  stage: docker
   image: docker:24
-  services:
-    - name: docker:24-dind
-      alias: docker
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
   script:
     - |
-      # Wait for Docker daemon to be ready
-      echo "Waiting for Docker daemon to start..."
-      sleep 5
+      echo "=== DOCKER BUILD STAGE ==="
       
-      # Debug: Check what certificates exist
-      echo "Checking certificate directory..."
-      ls -la /certs/ || echo "No certs directory"
-      
-      # Test Docker connection WITHOUT TLS first
-      echo "Testing Docker connection..."
-      DOCKER_TLS_VERIFY=0 docker info || echo "Docker info failed, trying without TLS..."
-      
-      # Force no TLS for all commands
-      export DOCKER_TLS_VERIFY=0
-      export DOCKER_CERT_PATH=""
-      
-      # Test again
-      echo "Testing with TLS disabled..."
-      docker info
-      
-      # Login to container registry
+      # Secure registry login
       echo "Logging into container registry..."
       echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
       
       # Build Docker image
-      echo "Building Docker image..."
-      docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+      echo "Building Docker image: $DOCKER_IMAGE:$DOCKER_TAG"
+      docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
       
       # Push Docker image
-      echo "Pushing Docker image to registry..."
+      echo "Pushing image to registry..."
       docker push $DOCKER_IMAGE:$DOCKER_TAG
+      docker push $DOCKER_IMAGE:latest
       
-      echo "Docker build and push completed successfully!"
+      echo "Docker image pushed successfully!"
+  needs: ["build"]
   only:
     - main
-  needs: ["build:nextjs"]
 
-deploy:production:
+# Deploy to Kubernetes
+deploy:
   stage: deploy
   image: bitnami/kubectl:latest
   script:
     - |
-      # Update Kubernetes deployment with new image
-      echo "Deploying to Kubernetes..."
+      echo "=== DEPLOYMENT STAGE ==="
+      
+      # Update deployment with new image
+      echo "Updating deployment: $K8S_DEPLOYMENT"
       kubectl set image deployment/$K8S_DEPLOYMENT $K8S_CONTAINER=$DOCKER_IMAGE:$DOCKER_TAG -n $K8S_NAMESPACE
       
       # Wait for rollout to complete
-      echo "Waiting for deployment rollout..."
+      echo "Waiting for rollout to finish..."
       kubectl rollout status deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE --timeout=300s
       
       # Verify deployment
-      echo "Verifying deployment..."
+      echo "Verifying deployment status..."
+      kubectl get deployments -n $K8S_NAMESPACE
       kubectl get pods -n $K8S_NAMESPACE -l app=$K8S_DEPLOYMENT
       
       echo "Deployment completed successfully!"
+  needs: ["docker"]
   only:
-    - main
-  needs: ["build:docker"]
+    - main` use all the think plain
