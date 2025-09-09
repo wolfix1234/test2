@@ -1,31 +1,81 @@
 stages:
   - build
   - test
+  - build-docker
   - deploy
 
-build-job:
+variables:
+  # Docker configuration
+  DOCKER_IMAGE: registry.musictomak.shop/root/test2
+  DOCKER_TAG: $CI_COMMIT_SHORT_SHA
+  # Kubernetes configuration (you'll set these as variables in GitLab CI/CD settings)
+  K8S_NAMESPACE: production
+  K8S_DEPLOYMENT: nextjs-app
+  K8S_CONTAINER: nextjs-app
+
+# Cache node_modules for faster builds
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+    - .next/cache/
+
+# Build Next.js application
+build:nextjs:
   stage: build
+  image: node:18-alpine
   script:
-    - echo "Compiling the application..."
-    - echo "Build complete."
+    - npm ci
+    - npm run build
+    - npm run export # If you're using static export
+  artifacts:
+    paths:
+      - .next/
+      - out/ # If using static export
+      - public/
+    expire_in: 1 week
 
-unit-test-job:
+# Run tests (optional)
+test:application:
   stage: test
+  image: node:18-alpine
   script:
-    - echo "Running unit tests..."
-    - echo "Unit tests passed."
+    - npm ci
+    - npm run test
+  needs: ["build:nextjs"]
 
-integration-test-job:
-  stage: test
+# Build and push Docker image
+build:docker:
+  stage: build-docker
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
   script:
-    - echo "Running integration tests..."
-    - echo "Integration tests passed."
-
-deploy-production-job:
-  stage: deploy
-  script:
-    - echo "Deploying to production environment..."
-    - echo "Deployment to production complete."
-  environment: production
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:$DOCKER_TAG
+    - docker push $DOCKER_IMAGE:latest
   only:
     - main
+  needs: ["test:application"]
+
+# Deploy to Kubernetes cluster
+deploy:production:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - |
+      # Update Kubernetes deployment with new image
+      kubectl set image deployment/$K8S_DEPLOYMENT $K8S_CONTAINER=$DOCKER_IMAGE:$DOCKER_TAG -n $K8S_NAMESPACE
+      
+      # Verify deployment
+      kubectl rollout status deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE --timeout=300s
+      
+      # Optional: restart if needed (uncomment if necessary)
+      # kubectl rollout restart deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE
+  only:
+    - main
+  needs: ["build:docker"]
