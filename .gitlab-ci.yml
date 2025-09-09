@@ -5,7 +5,7 @@ stages:
 
 variables:
   # Docker configuration
-  DOCKER_IMAGE: musictomak.shop/root/test2
+  DOCKER_IMAGE: registry.musictomak.shop/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   
   # Registry credentials (set your actual values here)
@@ -18,9 +18,9 @@ variables:
   K8S_DEPLOYMENT: nextjs-app
   K8S_CONTAINER: nextjs-app
   
-  # Docker-in-Docker configuration
+  # Docker-in-Docker configuration - FIXED TLS SETTINGS
   DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_CERTDIR: ""  # ← EMPTY STRING DISABLES TLS
   DOCKER_TLS_VERIFY: "0"
 
 cache:
@@ -53,8 +53,20 @@ build:docker:
       echo "Waiting for Docker daemon to start..."
       sleep 5
       
-      # Test Docker connection
+      # Debug: Check what certificates exist
+      echo "Checking certificate directory..."
+      ls -la /certs/ || echo "No certs directory"
+      
+      # Test Docker connection WITHOUT TLS first
       echo "Testing Docker connection..."
+      DOCKER_TLS_VERIFY=0 docker info || echo "Docker info failed, trying without TLS..."
+      
+      # Force no TLS for all commands
+      export DOCKER_TLS_VERIFY=0
+      export DOCKER_CERT_PATH=""
+      
+      # Test again
+      echo "Testing with TLS disabled..."
       docker info
       
       # Login to container registry
