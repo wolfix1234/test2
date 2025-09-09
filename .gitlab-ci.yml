@@ -1,0 +1,31 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build-job:
+  stage: build
+  script:
+    - echo "Compiling the application..."
+    - echo "Build complete."
+
+unit-test-job:
+  stage: test
+  script:
+    - echo "Running unit tests..."
+    - echo "Unit tests passed."
+
+integration-test-job:
+  stage: test
+  script:
+    - echo "Running integration tests..."
+    - echo "Integration tests passed."
+
+deploy-production-job:
+  stage: deploy
+  script:
+    - echo "Deploying to production environment..."
+    - echo "Deployment to production complete."
+  environment: production
+  only:
+    - main
