@@ -1,18 +1,27 @@
 stages:
   - build
-  # - test  # Commented out for development - will enable later
   - build-docker
   - deploy
 
 variables:
   # Docker configuration
-  DOCKER_IMAGE: $CI_REGISTRY_IMAGE # Uses GitLab's built-in variable
+  DOCKER_IMAGE: musictomak.shop/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   
-  # Kubernetes configuration - SET THESE IN CI/CD VARIABLES
+  # Registry credentials (set your actual values here)
+  CI_REGISTRY: musictomak.shop
+  CI_REGISTRY_USER: root
+  CI_REGISTRY_PASSWORD: glpat-OS-I0Gzqvex48Q2DpMMpTG86MQp1OjEH.01.0w0ajei0l  # ← Replace with your PAT
+  
+  # Kubernetes configuration
   K8S_NAMESPACE: mamad
   K8S_DEPLOYMENT: nextjs-app
   K8S_CONTAINER: nextjs-app
+  
+  # Docker-in-Docker configuration
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_VERIFY: "0"
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
@@ -32,27 +41,35 @@ build:nextjs:
       - public/
     expire_in: 1 week
 
-# test:application:
-#   stage: test
-#   image: node:18-alpine
-#   script:
-#     - npm ci
-#     - npm run test
-#   needs: ["build:nextjs"]
-
 build:docker:
   stage: build-docker
   image: docker:24
-  variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
-  services: []  # No dind needed
+  services:
+    - name: docker:24-dind
+      alias: docker
   script:
     - |
-      # Secure login using password-stdin
+      # Wait for Docker daemon to be ready
+      echo "Waiting for Docker daemon to start..."
+      sleep 5
+      
+      # Test Docker connection
+      echo "Testing Docker connection..."
+      docker info
+      
+      # Login to container registry
+      echo "Logging into container registry..."
       echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
       
+      # Build Docker image
+      echo "Building Docker image..."
       docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+      
+      # Push Docker image
+      echo "Pushing Docker image to registry..."
       docker push $DOCKER_IMAGE:$DOCKER_TAG
+      
+      echo "Docker build and push completed successfully!"
   only:
     - main
   needs: ["build:nextjs"]
@@ -62,14 +79,19 @@ deploy:production:
   image: bitnami/kubectl:latest
   script:
     - |
-      # Update Kubernetes deployment
+      # Update Kubernetes deployment with new image
+      echo "Deploying to Kubernetes..."
       kubectl set image deployment/$K8S_DEPLOYMENT $K8S_CONTAINER=$DOCKER_IMAGE:$DOCKER_TAG -n $K8S_NAMESPACE
       
       # Wait for rollout to complete
+      echo "Waiting for deployment rollout..."
       kubectl rollout status deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE --timeout=300s
       
       # Verify deployment
+      echo "Verifying deployment..."
       kubectl get pods -n $K8S_NAMESPACE -l app=$K8S_DEPLOYMENT
+      
+      echo "Deployment completed successfully!"
   only:
     - main
   needs: ["build:docker"]
