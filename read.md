@@ -1,1 +1,0 @@
-kubectl create secret docker-registry dockerhub-secret --docker-server=https://index.docker.io/v1/ --docker-username=wolfix1245 --docker-password=yourpassword --docker-email=youremail
