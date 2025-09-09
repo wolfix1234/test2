@@ -1,4 +1,4 @@
-dont use any input on this `stages:
+stages:
   - build
   - test
   - docker
