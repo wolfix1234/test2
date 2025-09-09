@@ -5,7 +5,7 @@ stages:
 
 variables:
   # Docker configuration
-  DOCKER_IMAGE: registry.musictomak.shop/root/test2
+  DOCKER_IMAGE: musictomak.shop/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   
   # Registry credentials (set your actual values here)
