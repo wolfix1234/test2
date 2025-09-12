@@ -1,23 +1,20 @@
 stages:
   - build
   - docker
-  # - scan
   - deploy
 
 variables:
   APP_NAME: nextjs-app
-  DOCKER_IMAGE: registry.musictomak.shop/root/test2
-  # DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  REGISTRY_URL: registry.musictomak.shop
+  DOCKER_IMAGE: $REGISTRY_URL/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   K8S_NAMESPACE: mamad
   K8S_DEPLOYMENT: $APP_NAME
   K8S_CONTAINER: $APP_NAME
 
-  # Required for DinD
+  # DinD setup
   DOCKER_TLS_CERTDIR: ""
   DOCKER_HOST: tcp://docker:2375/
-    # cache image ref (used by buildx)
-  # DOCKER_CACHE_IMAGE: $DOCKER_IMAGE:build-cache
 
 # Cache for faster builds
 cache:
@@ -46,18 +43,19 @@ build:
     - staging
     - tags
 
-# Build & Push Docker Image
+# 2. Build & Push Docker Image
 docker-build:
   stage: docker
   image: docker:24
   services:
     - docker:24-dind
   variables:
-    DOCKER_HOST: tcp://docker:2375/
     DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375/
   script:
     - echo "=== DOCKER LOGIN ==="
-    - echo "$CI_REGISTRY_PASSWORD" | docker login registry.musictomak.shop -u "$CI_REGISTRY_USER" --password-stdin
+    # Login to the custom registry using a PAT or deploy token
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$CI_REGISTRY_USER" --password-stdin
     - echo "=== DOCKER BUILD ==="
     - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:$DOCKER_TAG
@@ -65,7 +63,7 @@ docker-build:
   only:
     - main
 
-# Deploy with kubectl
+# 3. Deploy with kubectl
 deploy:
   stage: deploy
   image: bitnami/kubectl:latest
@@ -78,6 +76,7 @@ deploy:
     - kubectl get pods -n $K8S_NAMESPACE -l app=$K8S_DEPLOYMENT
   only:
     - main
+
 
 
 
