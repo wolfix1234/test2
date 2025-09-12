@@ -57,9 +57,8 @@ docker-build:
     # Login to the custom registry using a PAT or deploy token
     - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$CI_REGISTRY_USER" --password-stdin
     - echo "=== DOCKER BUILD ==="
-    - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
+    - docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
     - docker push $DOCKER_IMAGE:$DOCKER_TAG
-    - docker push $DOCKER_IMAGE:latest
   only:
     - main
 
