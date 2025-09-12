@@ -4,16 +4,13 @@ stages:
   - deploy
 
 variables:
-  # App & Kubernetes
   APP_NAME: nextjs-app
-  K8S_NAMESPACE: mamad
-  K8S_DEPLOYMENT: $APP_NAME
-  K8S_CONTAINER: $APP_NAME
-
-  # Docker registry
   REGISTRY_URL: registry.musictomak.shop
   DOCKER_IMAGE: $REGISTRY_URL/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
+  K8S_NAMESPACE: mamad
+  K8S_DEPLOYMENT: $APP_NAME
+  K8S_CONTAINER: $APP_NAME
 
   # DinD setup
   DOCKER_TLS_CERTDIR: ""
@@ -57,7 +54,7 @@ docker-build:
     DOCKER_HOST: tcp://docker:2375/
   script:
     - echo "=== DOCKER LOGIN ==="
-    # Login to custom registry using PAT or deploy token
+    # Login to the custom registry using a PAT or deploy token
     - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$CI_REGISTRY_USER" --password-stdin
     - echo "=== DOCKER BUILD ==="
     - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
@@ -66,7 +63,7 @@ docker-build:
   only:
     - main
 
-# 3. Deploy to Kubernetes
+# 3. Deploy with kubectl
 deploy:
   stage: deploy
   image: bitnami/kubectl:latest
@@ -79,3 +76,76 @@ deploy:
     - kubectl get pods -n $K8S_NAMESPACE -l app=$K8S_DEPLOYMENT
   only:
     - main
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 2. Build & push Docker image with DinD
+# debug-docker:
+#   stage: docker
+#   image: docker:24
+#   services:
+#     - docker:24-dind
+#   variables:
+#     DOCKER_HOST: tcp://docker:2375/
+#     DOCKER_TLS_CERTDIR: ""
+#   script:
+#     - docker --version
+#     - docker info
+#     - docker run --rm hello-world
+
+
+# docker with cache approach
+# docker:
+#   stage: docker
+#   image: docker:24
+#   services:
+#     - name: docker:24-dind
+#       alias: docker
+#   variables:
+#     # ensure buildx uses the right host
+#     DOCKER_BUILDKIT: "1"
+#   before_script:
+#     - echo "Logging into registry..."
+#     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+
+#     # ensure buildx is available and create a builder instance
+#     - docker buildx version || (echo "buildx not found" && exit 1)
+#     - |
+#       # create a builder (if not exists) and use it
+#       docker buildx create --name ci-builder --use --driver docker-container || true
+#     - docker buildx inspect --bootstrap
+
+#     # attempt to pull cache image so it can be used as --cache-from (ignore errors)
+#     - |
+#       echo "Pulling cache image (if exists): $DOCKER_CACHE_IMAGE"
+#       docker pull $DOCKER_CACHE_IMAGE || echo "No cache image yet, continuing..."
+
+#   script:
+#     - echo "Building with buildx and using registry cache..."
+#     - |
+#       docker buildx build \
+#         --builder ci-builder \
+#         --progress plain \
+#         --tag $DOCKER_IMAGE:$DOCKER_TAG \
+#         --tag $DOCKER_IMAGE:$CI_COMMIT_REF_NAME \
+#         --cache-from=type=registry,ref=$DOCKER_CACHE_IMAGE \
+#         --cache-to=type=registry,ref=$DOCKER_CACHE_IMAGE,mode=max \
+#         --push \
+#         $CI_PROJECT_DIR
+
+#   needs: ["build"]
+#   only:
+#     - main
+#     - staging
+#     - tags
