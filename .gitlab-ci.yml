@@ -6,8 +6,8 @@ stages:
 
 variables:
   APP_NAME: nextjs-app
-  # DOCKER_IMAGE: musictomak.shop/root/test2
-  DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  DOCKER_IMAGE: registry.musictomak.shop/root/test2
+  # DOCKER_IMAGE: $CI_REGISTRY_IMAGE
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   K8S_NAMESPACE: mamad
   K8S_DEPLOYMENT: $APP_NAME
