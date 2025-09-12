@@ -56,8 +56,9 @@ docker-build:
     DOCKER_HOST: tcp://docker:2375/
     DOCKER_TLS_CERTDIR: ""
   script:
+    - echo "=== DOCKER LOGIN ==="
+    - echo "$CI_REGISTRY_PASSWORD" | docker login registry.musictomak.shop -u "$CI_REGISTRY_USER" --password-stdin
     - echo "=== DOCKER BUILD ==="
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
     - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:$DOCKER_TAG
     - docker push $DOCKER_IMAGE:latest
