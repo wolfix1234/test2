@@ -65,7 +65,7 @@ docker-build:
 # 3. Deploy with kubectl
 deploy:
   stage: deploy
-  image: bitnami/kubectl:1.30-debian-11
+  image: bitnami/kubectl:1.30
   script:
     - echo "=== DEPLOY TO K8S ==="
     - echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
@@ -75,6 +75,7 @@ deploy:
     - kubectl get pods -n $K8S_NAMESPACE -l app=$K8S_DEPLOYMENT
   only:
     - main
+
 
 
 
