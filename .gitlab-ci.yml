@@ -21,6 +21,8 @@ cache:
     - node_modules/
     - .next/cache/
   policy: pull-push
+  tags:
+    - docker
 
 # 1. Build Next.js app
 build:
@@ -38,7 +40,8 @@ build:
     expire_in: 1h
   only:
     - main
-
+  tags:
+    - docker
 # 2. Build & Push Docker Image
 docker-build:
   stage: docker
@@ -51,34 +54,29 @@ docker-build:
     - docker push $DOCKER_IMAGE:$DOCKER_TAG
   only:
     - main
+  tags:
+    - docker   # make sure this matches your runner tag
 
 # 3. Deploy to Kubernetes (first deploy + updates)
 deploy:
   stage: deploy
-  image: registry.k8s.io/kubectl:v1.30.2
   script:
-    - echo "$KUBECONFIG_DATA" | base64 -d > kubeconfig
-    - export KUBECONFIG=$PWD/kubeconfig
-    - |
-      # Create namespace if missing
-      kubectl get ns $K8S_NAMESPACE || kubectl create ns $K8S_NAMESPACE
-    - |
-      # Create imagePullSecret if missing
-      kubectl get secret regcred -n $K8S_NAMESPACE || \
-      kubectl create secret docker-registry regcred \
-        --docker-server=$REGISTRY_URL \
+    - echo "=== DEPLOY TO K8S ==="
+    - kubectl get ns production || kubectl create ns production
+    - kubectl get secret regcred -n production || kubectl create secret docker-registry regcred \
+        --docker-server=registry.musictomak.shop \
         --docker-username=$CI_REGISTRY_USER \
         --docker-password=$CI_REGISTRY_PASSWORD \
-        -n $K8S_NAMESPACE
+        -n production
     - |
-      # Apply manifest if first deploy
-      if ! kubectl get deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE; then
+      if ! kubectl get deployment/nextjs-app -n production; then
         kubectl apply -f k8s/manifest.yaml
       fi
-    - |
-      # Update container image for rollout
-      kubectl set image deployment/$K8S_DEPLOYMENT $K8S_CONTAINER=$DOCKER_IMAGE:$DOCKER_TAG -n $K8S_NAMESPACE
-      kubectl rollout status deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE --timeout=300s
-      kubectl get pods -n $K8S_NAMESPACE -l app=$K8S_DEPLOYMENT
+    - kubectl set image deployment/nextjs-app nextjs-app=$DOCKER_IMAGE:$DOCKER_TAG -n production
+    - kubectl rollout status deployment/nextjs-app -n production --timeout=300s
+    - kubectl get pods -n production -l app=nextjs-app
   only:
     - main
+  tags:
+    - shell   # make sure this matches your runner tag
+
