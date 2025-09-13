@@ -61,20 +61,18 @@ deploy:
   stage: deploy
   script:
     - echo "=== DEPLOY TO K8S ==="
-    # ensure namespace exists
+    # explicitly point to kubeconfig
+    - export KUBECONFIG=/home/gitlab-runner/.kube/config
     - kubectl get ns production || kubectl create ns production
-    # ensure registry secret exists
     - kubectl get secret regcred -n production || kubectl create secret docker-registry regcred \
         --docker-server=registry.musictomak.shop \
         --docker-username=$CI_REGISTRY_USER \
         --docker-password=$CI_REGISTRY_PASSWORD \
         -n production
-    # first deploy if deployment does not exist
     - |
       if ! kubectl get deployment/nextjs-app -n production; then
         kubectl apply -f k8s/manifest.yaml
       fi
-    # update image for rolling update
     - kubectl set image deployment/nextjs-app nextjs-app=$DOCKER_IMAGE:$DOCKER_TAG -n production
     - kubectl rollout status deployment/nextjs-app -n production --timeout=300s
     - kubectl get pods -n production -l app=nextjs-app
@@ -82,5 +80,6 @@ deploy:
     - main
   tags:
     - shell
+
 
 
