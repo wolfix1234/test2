@@ -21,8 +21,7 @@ cache:
     - node_modules/
     - .next/cache/
   policy: pull-push
-  tags:
-    - docker
+
 
 # 1. Build Next.js app
 build:
