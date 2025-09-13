@@ -8,10 +8,11 @@ variables:
   REGISTRY_URL: registry.musictomak.shop
   DOCKER_IMAGE: $REGISTRY_URL/root/test2
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
-  K8S_NAMESPACE: production
+  K8S_NAMESPACE: mamad
   K8S_DEPLOYMENT: $APP_NAME
   K8S_CONTAINER: $APP_NAME
 
+  # Docker-in-Docker
   DOCKER_TLS_CERTDIR: ""
   DOCKER_HOST: tcp://docker:2375/
 
@@ -22,8 +23,9 @@ cache:
     - .next/cache/
   policy: pull-push
 
-
+# ----------------------------
 # 1. Build Next.js app
+# ----------------------------
 build:
   stage: build
   image: node:18-alpine
@@ -41,7 +43,10 @@ build:
     - main
   tags:
     - docker
+
+# ----------------------------
 # 2. Build & Push Docker Image
+# ----------------------------
 docker-build:
   stage: docker
   image: docker:24
@@ -54,38 +59,36 @@ docker-build:
   only:
     - main
   tags:
-    - docker   # make sure this matches your runner tag
+    - docker
 
-# 3. Deploy to Kubernetes (first deploy + updates)
+# ----------------------------
+# 3. Deploy to Kubernetes
+# ----------------------------
 deploy:
   stage: deploy
   script:
     - echo "=== DEPLOY TO K8S ==="
+    # use the kubeconfig from VPS
     - export KUBECONFIG=/home/gitlab-runner/.kube/config
-    # ensure namespace exists
-    - kubectl get ns production || kubectl create ns production
-    # ensure registry secret exists (fixed syntax)
+    # set namespace context to mamad
+    - kubectl config set-context --current --namespace=$K8S_NAMESPACE
+    # ensure Docker registry secret exists (only create if missing)
     - |
-      kubectl get secret regcred -n production || \
+      kubectl get secret regcred || \
       kubectl create secret docker-registry regcred \
-        --docker-server=registry.musictomak.shop \
+        --docker-server=$REGISTRY_URL \
         --docker-username=$CI_REGISTRY_USER \
-        --docker-password=$CI_REGISTRY_PASSWORD \
-        -n production
+        --docker-password=$CI_REGISTRY_PASSWORD
     # first deploy if deployment does not exist
     - |
-      if ! kubectl get deployment/nextjs-app -n production; then
+      if ! kubectl get deployment/$K8S_DEPLOYMENT; then
         kubectl apply -f k8s/manifest.yaml
       fi
     # update image for rolling update
-    - kubectl set image deployment/nextjs-app nextjs-app=$DOCKER_IMAGE:$DOCKER_TAG -n production
-    - kubectl rollout status deployment/nextjs-app -n production --timeout=300s
-    - kubectl get pods -n production -l app=nextjs-app
+    - kubectl set image deployment/$K8S_DEPLOYMENT $K8S_CONTAINER=$DOCKER_IMAGE:$DOCKER_TAG
+    - kubectl rollout status deployment/$K8S_DEPLOYMENT --timeout=300s
+    - kubectl get pods -l app=$K8S_DEPLOYMENT
   only:
     - main
   tags:
     - shell
-
-
-
-
