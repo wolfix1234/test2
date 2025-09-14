@@ -7,7 +7,7 @@ variables:
   # APP_NAME: nextjs-app
   # REGISTRY_URL: registry.musictomak.shop
   # DOCKER_IMAGE: $REGISTRY_URL/root/test2
-  DOCKER_IMAGE: docker.io/wolfix1245/test2
+  DOCKER_IMAGE: docker.io/$DOCKERHUB_USER/test2
   # DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   # K8S_NAMESPACE: mamad
   # K8S_DEPLOYMENT: $APP_NAME
@@ -54,9 +54,9 @@ docker-build:
   services:
     - docker:24-dind
   script:
-    - echo "@Mamad12452580@" | docker login -u "wolfix1245" --password-stdin
-    - docker build -t docker.io/wolfix1245/test2:latest .
-    - docker push docker.io/wolfix1245/test2:latest
+    - echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USER" --password-stdin
+    - docker build -t docker.io/$DOCKERHUB_USER/test2:latest .
+    - docker push docker.io/$DOCKERHUB_USER/test2:latest
   only:
     - main
   tags:
