@@ -103,14 +103,14 @@ deploy:
     # use kubeconfig on VPS
     - export KUBECONFIG=/home/gitlab-runner/.kube/config
     # set namespace context
-    # - kubectl config set-context --current --namespace=$K8S_NAMESPACE
-    # # ensure Docker registry secret exists
-    # - |
-    #   kubectl get secret regcred || \
-    #   kubectl create secret docker-registry regcred \
-    #     --docker-server=$REGISTRY_URL \
-    #     --docker-username=$CI_REGISTRY_USER \
-    #     --docker-password=$CI_REGISTRY_PASSWORD
+    - kubectl config set-context --current --namespace=$K8S_NAMESPACE
+    # ensure Docker registry secret exists
+    - |
+      kubectl get secret regcred || \
+      kubectl create secret docker-registry regcred \
+        --docker-server=$REGISTRY_URL \
+        --docker-username=$CI_REGISTRY_USER \
+        --docker-password=$CI_REGISTRY_PASSWORD
     # apply manifest (first deploy + updates)
     - kubectl apply -f k8s/manifest.yaml
     # optional: show pods status

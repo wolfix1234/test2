@@ -17,7 +17,7 @@ spec:
         - name: regcred  # registry secret
       containers:
       - name: nextjs-app
-        image: registry.musictomak.shop/root/test2:initial
+        image: registry.musictomak.shop/root/test2:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
