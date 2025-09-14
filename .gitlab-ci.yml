@@ -26,23 +26,23 @@ cache:
 # ----------------------------
 # 1. Build Next.js app
 # ----------------------------
-build:
-  stage: build
-  image: node:18-alpine
-  script:
-    - npm ci --prefer-offline --audit=false
-    - npm run build
-  artifacts:
-    paths:
-      - .next/
-      - public/
-      - package.json
-      - package-lock.json
-    expire_in: 1h
-  only:
-    - main
-  tags:
-    - docker
+# build:
+#   stage: build
+#   image: node:18-alpine
+#   script:
+#     - npm ci --prefer-offline --audit=false
+#     - npm run build
+#   artifacts:
+#     paths:
+#       - .next/
+#       - public/
+#       - package.json
+#       - package-lock.json
+#     expire_in: 1h
+#   only:
+#     - main
+#   tags:
+#     - docker
 
 # ----------------------------
 # 2. Build & Push Docker Image
@@ -54,8 +54,10 @@ docker-build:
     - docker:24-dind
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$CI_REGISTRY_USER" --password-stdin
-    - docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-    - docker push $DOCKER_IMAGE:$DOCKER_TAG
+    # - docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+    # - docker push $DOCKER_IMAGE:$DOCKER_TAG
+    - docker build -t $DOCKER_IMAGE:latest .
+    - docker push $DOCKER_IMAGE:latest
   only:
     - main
   tags:
