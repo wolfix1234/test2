@@ -13,11 +13,12 @@ spec:
       labels:
         app: nextjs-app
     spec:
-      imagePullSecrets:
-        - name: regcred  # registry secret
+      # imagePullSecrets:
+      #   - name: regcred  
       containers:
       - name: nextjs-app
-        image: registry.musictomak.shop/root/test2:latest
+        # image: registry.musictomak.shop/root/test2:latest
+        image: docker.io/wolfix1245/test2:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000

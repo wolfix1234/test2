@@ -4,13 +4,14 @@ stages:
   - deploy
 
 variables:
-  APP_NAME: nextjs-app
-  REGISTRY_URL: registry.musictomak.shop
-  DOCKER_IMAGE: $REGISTRY_URL/root/test2
-  DOCKER_TAG: $CI_COMMIT_SHORT_SHA
-  K8S_NAMESPACE: mamad
-  K8S_DEPLOYMENT: $APP_NAME
-  K8S_CONTAINER: $APP_NAME
+  # APP_NAME: nextjs-app
+  # REGISTRY_URL: registry.musictomak.shop
+  # DOCKER_IMAGE: $REGISTRY_URL/root/test2
+  DOCKER_IMAGE: docker.io/wolfix1245/test2
+  # DOCKER_TAG: $CI_COMMIT_SHORT_SHA
+  # K8S_NAMESPACE: mamad
+  # K8S_DEPLOYMENT: $APP_NAME
+  # K8S_CONTAINER: $APP_NAME
 
   # Docker-in-Docker
   DOCKER_TLS_CERTDIR: ""
@@ -47,21 +48,89 @@ cache:
 # ----------------------------
 # 2. Build & Push Docker Image
 # ----------------------------
+# docker-build:
+#   stage: docker
+#   image: docker:24
+#   services:
+#     - docker:24-dind
+#   script:
+#     - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$CI_REGISTRY_USER" --password-stdin
+#     # - docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+#     # - docker push $DOCKER_IMAGE:$DOCKER_TAG
+#     - docker build -t $DOCKER_IMAGE:latest .
+#     - docker push $DOCKER_IMAGE:latest
+#   only:
+#     - main
+#   tags:
+#     - docker
+
 docker-build:
   stage: docker
   image: docker:24
   services:
     - docker:24-dind
   script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login $REGISTRY_URL -u "$CI_REGISTRY_USER" --password-stdin
-    # - docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-    # - docker push $DOCKER_IMAGE:$DOCKER_TAG
     - docker build -t $DOCKER_IMAGE:latest .
     - docker push $DOCKER_IMAGE:latest
   only:
     - main
   tags:
     - docker
+
+
+
+# ----------------------------
+# 3. Deploy to Kubernetes (using Docker Hub)
+# ----------------------------
+# private
+# deploy:
+#   stage: deploy
+#   script:
+#     - echo "=== DEPLOY TO K8S (Docker Hub) ==="
+#     # use kubeconfig on VPS
+#     - export KUBECONFIG=/home/gitlab-runner/.kube/config
+#     # set namespace context
+#     - kubectl config set-context --current --namespace=$K8S_NAMESPACE
+
+#     # ensure DockerHub secret exists (only needed if repo is private)
+#     - |
+#       kubectl get secret dockerhub || \
+#       kubectl create secret docker-registry dockerhub \
+#         --docker-server=https://index.docker.io/v1/ \
+#         --docker-username=$DOCKERHUB_USER \
+#         --docker-password=$DOCKERHUB_PASSWORD \
+#         --docker-email=$DOCKERHUB_EMAIL
+
+#     # apply manifest (first deploy + updates)
+#     - kubectl apply -f k8s/manifest.yaml
+#   only:
+#     - main
+#   tags:
+#     - shell
+
+deploy:
+  stage: deploy
+  script:
+    - echo "=== DEPLOY TO K8S (Docker Hub / public repo) ==="
+    - export KUBECONFIG=/home/gitlab-runner/.kube/config
+    # - kubectl config set-context --current --namespace=$K8S_NAMESPACE
+
+    # apply manifest (first deploy + updates)
+    - kubectl apply -f k8s/manifest.yaml
+
+    # rollout new image
+    # - kubectl set image deployment/$K8S_DEPLOYMENT $K8S_CONTAINER=$DOCKER_IMAGE:$DOCKER_TAG
+    # - kubectl rollout status deployment/$K8S_DEPLOYMENT --timeout=300s
+    # - kubectl get pods -l app=$K8S_DEPLOYMENT
+  only:
+    - main
+  tags:
+    - shell
+
+
+
+
+
 
 # ----------------------------
 # 3. Deploy to Kubernetes
@@ -97,27 +166,28 @@ docker-build:
 
 # ----------------------------
 # 3. Deploy to Kubernetes (development)
-# ----------------------------
-deploy:
-  stage: deploy
-  script:
-    - echo "=== DEPLOY TO K8S (Development) ==="
-    # use kubeconfig on VPS
-    - export KUBECONFIG=/home/gitlab-runner/.kube/config
-    # set namespace context
-    - kubectl config set-context --current --namespace=$K8S_NAMESPACE
-    # ensure Docker registry secret exists
-    - |
-      kubectl get secret regcred || \
-      kubectl create secret docker-registry regcred \
-        --docker-server=$REGISTRY_URL \
-        --docker-username=$CI_REGISTRY_USER \
-        --docker-password=$CI_REGISTRY_PASSWORD
-    # apply manifest (first deploy + updates)
-    - kubectl apply -f k8s/manifest.yaml
-    # optional: show pods status
-    # - kubectl get pods -l app=$K8S_DEPLOYMENT
-  only:
-    - main
-  tags:
-    - shell
+# # ----------------------------
+# registery gitlab
+# deploy:
+#   stage: deploy
+#   script:
+#     - echo "=== DEPLOY TO K8S (Development) ==="
+#     # use kubeconfig on VPS
+#     - export KUBECONFIG=/home/gitlab-runner/.kube/config
+#     # set namespace context
+#     - kubectl config set-context --current --namespace=$K8S_NAMESPACE
+#     # ensure Docker registry secret exists
+#     - |
+#       kubectl get secret regcred || \
+#       kubectl create secret docker-registry regcred \
+#         --docker-server=$REGISTRY_URL \
+#         --docker-username=$CI_REGISTRY_USER \
+#         --docker-password=$CI_REGISTRY_PASSWORD
+#     # apply manifest (first deploy + updates)
+#     - kubectl apply -f k8s/manifest.yaml
+#     # optional: show pods status
+#     # - kubectl get pods -l app=$K8S_DEPLOYMENT
+#   only:
+#     - main
+#   tags:
+#     - shell
